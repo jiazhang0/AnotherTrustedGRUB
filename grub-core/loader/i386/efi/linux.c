@@ -169,7 +169,7 @@ grub_cmd_initrd (grub_command_t cmd __attribute__ ((unused)),
                         argv[i]);
           goto fail;
         }
-      grub_tpm_measure (ptr, cursize, GRUB_BINARY_PCR, "grub_linuxefi", "Initrd");
+      grub_tpm_measure (ptr, cursize, GRUB_BINARY_PCR, "initrdefi", argv[i]);
       grub_print_error();
       ptr += cursize;
       grub_memset (ptr, 0, ALIGN_UP_OVERHEAD (cursize, 4));
@@ -226,7 +226,7 @@ grub_cmd_linux (grub_command_t cmd __attribute__ ((unused)),
       goto fail;
     }
 
-  grub_tpm_measure (kernel, filelen, GRUB_BINARY_PCR, "grub_linuxefi", "Kernel");
+  grub_tpm_measure (kernel, filelen, GRUB_BINARY_PCR, "linuxefi", argv[0]);
   grub_print_error();
 
   if (! grub_linuxefi_secure_validate (kernel, filelen))
