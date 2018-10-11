@@ -150,4 +150,11 @@ typedef struct grub_efi_tpm2_protocol grub_efi_tpm2_protocol_t;
 
 #define TCG_ALG_SHA 0x00000004
 
+/* EFI specific event types */
+#define EV_EFI_EVENT_BASE 0x80000000
+#define EV_EFI_BOOT_SERVICES_APPLICATION (EV_EFI_EVENT_BASE + 3)
+
+/* This bit shall be set when the intent is to measure a PE/COFF image */
+#define PE_COFF_IMAGE 0x0000000000000010
+
 #endif

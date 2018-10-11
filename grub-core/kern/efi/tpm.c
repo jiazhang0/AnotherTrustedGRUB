@@ -217,6 +217,7 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
   EFI_TCG2_EVENT *event;
   grub_efi_status_t status;
   grub_efi_tpm2_protocol_t *tpm;
+  grub_uint64_t flags;
 
   tpm = grub_efi_open_protocol (tpm_handle, &tpm2_guid,
 				GRUB_EFI_OPEN_PROTOCOL_GET_PROTOCOL);
@@ -232,11 +233,17 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
   event->Header.HeaderSize = sizeof(EFI_TCG2_EVENT_HEADER);
   event->Header.HeaderVersion = 1;
   event->Header.PCRIndex = pcr;
-  event->Header.EventType = EV_IPL;
+  if (size > 2 && !grub_memcmp (buf, "MZ", 2)) {
+    event->Header.EventType = EV_EFI_BOOT_SERVICES_APPLICATION;
+    flags = PE_COFF_IMAGE;
+  } else {
+    event->Header.EventType = EV_IPL;
+    flags = 0;
+  }
   event->Size = sizeof(*event) - sizeof(event->Event) + grub_strlen(description);
   grub_memcpy(event->Event, description, grub_strlen(description));
 
-  status = efi_call_5 (tpm->hash_log_extend_event, tpm, 0, (grub_efi_physical_address_t)buf,
+  status = efi_call_5 (tpm->hash_log_extend_event, tpm, flags, (grub_efi_physical_address_t)buf,
 		       (grub_uint64_t) size, event);
 
   switch (status) {
