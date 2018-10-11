@@ -224,7 +224,7 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
   if (!grub_tpm2_present(tpm))
     return 0;
 
-  event = grub_zalloc(sizeof (EFI_TCG2_EVENT) + grub_strlen(description) + 1);
+  event = grub_zalloc(sizeof (EFI_TCG2_EVENT) + grub_strlen(description));
   if (!event)
     return grub_error (GRUB_ERR_OUT_OF_MEMORY,
 		       N_("cannot allocate TPM event buffer"));
@@ -233,8 +233,8 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
   event->Header.HeaderVersion = 1;
   event->Header.PCRIndex = pcr;
   event->Header.EventType = EV_IPL;
-  event->Size = sizeof(*event) - sizeof(event->Event) + grub_strlen(description) + 1;
-  grub_memcpy(event->Event, description, grub_strlen(description) + 1);
+  event->Size = sizeof(*event) - sizeof(event->Event) + grub_strlen(description);
+  grub_memcpy(event->Event, description, grub_strlen(description));
 
   status = efi_call_5 (tpm->hash_log_extend_event, tpm, 0, (grub_efi_physical_address_t)buf,
 		       (grub_uint64_t) size, event);
