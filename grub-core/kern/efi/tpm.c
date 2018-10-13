@@ -218,6 +218,10 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
   EFI_TCG2_EVENT *event;
   grub_efi_status_t status;
   grub_efi_tpm2_protocol_t *tpm;
+  grub_uint64_t flags;
+  grub_size_t event_size;
+  int is_pecoff;
+  EFI_IMAGE_LOAD_EVENT *image_load;
 
   tpm = grub_efi_open_protocol (tpm_handle, &tpm2_guid,
 				GRUB_EFI_OPEN_PROTOCOL_GET_PROTOCOL);
@@ -225,21 +229,50 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
   if (!grub_tpm2_present(tpm))
     return 0;
 
-  event = grub_zalloc(sizeof (EFI_TCG2_EVENT) + grub_strlen(description));
+  if (size > 2 && !grub_memcmp (buf, "MZ", 2)) {
+    is_pecoff = 1;
+    flags = PE_COFF_IMAGE;
+    // FilePathSize  = (UINT32) GetDevicePathSize (FilePath);
+    event_size = sizeof (*image_load) - sizeof (image_load->DevicePath) + //FilePathSize;
+  } else {
+    is_pecoff = 0;
+    flags = 0;
+    event_size = grub_strlen(description);
+    grub_memcpy(event->Event, description, event_size);
+  }
+
+  event = grub_zalloc(sizeof (*event) - sizeof(event->Event) + event_size);
   if (!event)
     return grub_error (GRUB_ERR_OUT_OF_MEMORY,
-		       N_("cannot allocate TPM event buffer"));
+               N_("cannot allocate TPM event buffer"));
 
   event->Header.HeaderSize = sizeof(EFI_TCG2_EVENT_HEADER);
   event->Header.HeaderVersion = 1;
   event->Header.PCRIndex = pcr;
-  event->Header.EventType = EV_IPL;
-  event->Size = sizeof(*event) - sizeof(event->Event) + grub_strlen(description);
-  grub_memcpy(event->Event, description, grub_strlen(description));
+  event->Size = sizeof(*event) - sizeof(event->Event) + event_size;
+  if (!is_pecoff)
+    event->Header.EventType = EV_IPL;
+  else {
+    event->Header.EventType = EV_EFI_BOOT_SERVICES_APPLICATION;
+    image_load = (EFI_IMAGE_LOAD_EVENT *) event->Event;
+    image_load->ImageLocationInMemory = (grub_efi_physical_address_t) buf;
+    image_load->ImageLengthInMemory = (grub_uint64_t) size;
+grub_efi_modules_addr (void)
+    image_load->ImageLinkTimeAddress = image->image_base; // pe_parse
 
-  status = efi_call_5 (tpm->hash_log_extend_event, tpm, 0, (grub_efi_physical_address_t)buf,
+260   file_path = make_file_path (dp, filename);
+261   if (! file_path)
+262     goto fail;
+263 
+264   grub_printf ("file path: ");
+265   grub_efi_print_device_path (file_path);
+    image_load->LengthOfDevicePath = FilePathSize;
+    grub_memcpy (image_load->DevicePath, FilePath, FilePathSize);
+  }
+
+  status = efi_call_5 (tpm->hash_log_extend_event, tpm, flags, (grub_efi_physical_address_t) buf,
 		       (grub_uint64_t) size, event);
-  grub_free(event);
+  grub_free (event);
 
   switch (status) {
   case GRUB_EFI_SUCCESS:
