@@ -1,0 +1,62 @@
+From 918b1b346597d76e50907991a6f1d29dac1c70e1 Mon Sep 17 00:00:00 2001
+From: Jia Zhang <zhang.jia@linux.alibaba.com>
+Date: Thu, 11 Oct 2018 15:34:46 +0800
+Subject: [PATCH 2/3] Support to measure PE/COFF image
+
+Signed-off-by: Jia Zhang <zhang.jia@linux.alibaba.com>
+---
+ grub-core/kern/efi/tpm.c | 11 +++++++++--
+ include/grub/efi/tpm.h   |  7 +++++++
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/grub-core/kern/efi/tpm.c b/grub-core/kern/efi/tpm.c
+index 9d8166a80..15afe850d 100644
+--- a/grub-core/kern/efi/tpm.c
++++ b/grub-core/kern/efi/tpm.c
+@@ -217,6 +217,7 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
+   EFI_TCG2_EVENT *event;
+   grub_efi_status_t status;
+   grub_efi_tpm2_protocol_t *tpm;
++  grub_uint64_t flags;
+ 
+   tpm = grub_efi_open_protocol (tpm_handle, &tpm2_guid,
+ 				GRUB_EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+@@ -232,11 +233,17 @@ grub_tpm2_log_event(grub_efi_handle_t tpm_handle, unsigned char *buf,
+   event->Header.HeaderSize = sizeof(EFI_TCG2_EVENT_HEADER);
+   event->Header.HeaderVersion = 1;
+   event->Header.PCRIndex = pcr;
+-  event->Header.EventType = EV_IPL;
++  if (size > 2 && !grub_memcmp (buf, "MZ", 2)) {
++    event->Header.EventType = EV_EFI_BOOT_SERVICES_APPLICATION;
++    flags = PE_COFF_IMAGE;
++  } else {
++    event->Header.EventType = EV_IPL;
++    flags = 0;
++  }
+   event->Size = sizeof(*event) - sizeof(event->Event) + grub_strlen(description);
+   grub_memcpy(event->Event, description, grub_strlen(description));
+ 
+-  status = efi_call_5 (tpm->hash_log_extend_event, tpm, 0, (grub_efi_physical_address_t)buf,
++  status = efi_call_5 (tpm->hash_log_extend_event, tpm, flags, (grub_efi_physical_address_t)buf,
+ 		       (grub_uint64_t) size, event);
+ 
+   switch (status) {
+diff --git a/include/grub/efi/tpm.h b/include/grub/efi/tpm.h
+index 63d8a0fe7..f276c7338 100644
+--- a/include/grub/efi/tpm.h
++++ b/include/grub/efi/tpm.h
+@@ -150,4 +150,11 @@ typedef struct grub_efi_tpm2_protocol grub_efi_tpm2_protocol_t;
+ 
+ #define TCG_ALG_SHA 0x00000004
+ 
++/* EFI specific event types */
++#define EV_EFI_EVENT_BASE 0x80000000
++#define EV_EFI_BOOT_SERVICES_APPLICATION (EV_EFI_EVENT_BASE + 3)
++
++/* This bit shall be set when the intent is to measure a PE/COFF image */
++#define PE_COFF_IMAGE 0x0000000000000010
++
+ #endif
+-- 
+2.14.4.44.g2045bb6
+

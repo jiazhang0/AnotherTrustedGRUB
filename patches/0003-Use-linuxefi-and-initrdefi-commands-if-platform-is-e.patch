@@ -1,0 +1,44 @@
+From c480094bd99184d0c6c6339978d5ccff84d5078b Mon Sep 17 00:00:00 2001
+From: Jia Zhang <zhang.jia@linux.alibaba.com>
+Date: Thu, 11 Oct 2018 20:57:24 +0800
+Subject: [PATCH 3/3] Use linuxefi and initrdefi commands if platform is efi
+
+Signed-off-by: Jia Zhang <zhang.jia@linux.alibaba.com>
+---
+ util/grub.d/10_linux.in | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/util/grub.d/10_linux.in b/util/grub.d/10_linux.in
+index de9044c7f..85b402bc4 100644
+--- a/util/grub.d/10_linux.in
++++ b/util/grub.d/10_linux.in
+@@ -128,17 +128,24 @@ linux_entry ()
+     fi
+     printf '%s\n' "${prepare_boot_cache}" | sed "s/^/$submenu_indentation/"
+   fi
++  if [ "@GRUB_PLATFORM@" != "efi" ] ; then
++    linux_cmd="linux"
++    initrd_cmd="initrd"
++  else
++    linux_cmd="linuxefi"
++    initrd_cmd="initrdefi"
++  fi
+   message="$(gettext_printf "Loading Linux %s ..." ${version})"
+   sed "s/^/$submenu_indentation/" << EOF
+ 	echo	'$(echo "$message" | grub_quote)'
+-	linux	${rel_dirname}/${basename} root=${linux_root_device_thisversion} ro ${args}
++	${linux_cmd}	${rel_dirname}/${basename} root=${linux_root_device_thisversion} ro ${args}
+ EOF
+   if test -n "${initrd}" ; then
+     # TRANSLATORS: ramdisk isn't identifier. Should be translated.
+     message="$(gettext_printf "Loading initial ramdisk ...")"
+     sed "s/^/$submenu_indentation/" << EOF
+ 	echo	'$(echo "$message" | grub_quote)'
+-	initrd	${rel_dirname}/${initrd}
++	${initrd_cmd}	${rel_dirname}/${initrd}
+ EOF
+   fi
+   sed "s/^/$submenu_indentation/" << EOF
+-- 
+2.14.4.44.g2045bb6
+
